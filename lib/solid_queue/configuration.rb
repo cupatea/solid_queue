@@ -186,7 +186,6 @@ module SolidQueue
         end
       end
 
-
       def config_from(file_or_hash, keys: [], fallback: {}, env: Rails.env)
         load_config_from(file_or_hash).then do |config|
           config = config[env.to_sym] ? config[env.to_sym] : config

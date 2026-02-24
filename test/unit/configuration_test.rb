@@ -21,7 +21,7 @@ class ConfigurationTest < ActiveSupport::TestCase
   test "default configuration when config given is empty" do
     configuration = SolidQueue::Configuration.new(config_file: config_file_path(:empty_configuration), recurring_schedule_file: config_file_path(:empty_configuration))
 
-    assert_equal 3, configuration.configured_processes.count # includes scheduler for dynamic tasks
+    assert_equal 3, configuration.configured_processes.count
     assert_processes configuration, :worker, 1, queues: "*"
     assert_processes configuration, :dispatcher, 1, batch_size: SolidQueue::Configuration::DISPATCHER_DEFAULTS[:batch_size]
   end
@@ -134,7 +134,7 @@ class ConfigurationTest < ActiveSupport::TestCase
 
     configuration = SolidQueue::Configuration.new(recurring_schedule_file: config_file_path(:recurring_with_production_only))
     assert configuration.valid?
-    assert_processes configuration, :scheduler, 1 # Starts in case of dynamic tasks
+    assert_processes configuration, :scheduler, 1
 
     assert_output(/Provided configuration file '[^']+' does not exist\./) do
       configuration = SolidQueue::Configuration.new(recurring_schedule_file: config_file_path(:recurring_with_empty))

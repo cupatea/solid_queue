@@ -43,9 +43,8 @@ module SolidQueue
 
   delegate :on_start, :on_stop, :on_exit, to: Supervisor
 
-
   def schedule_task(key, **options)
-    RecurringTask.from_configuration(key, **options).tap do |task|
+    RecurringTask.from_configuration(key, **options.except(:static)).tap do |task|
       task.static = false
       task.save!
     end

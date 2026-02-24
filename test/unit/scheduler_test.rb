@@ -21,7 +21,7 @@ class SchedulerTest < ActiveSupport::TestCase
     SolidQueue::RecurringTask.create(
       key: "dynamic_task", static: false, class_name: "AddToBufferJob", schedule: "every second", arguments: [ 42 ]
     )
-    scheduler = SolidQueue::Scheduler.new(recurring_tasks:  {}).tap(&:start)
+    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}).tap(&:start)
 
     wait_for_registered_processes(1, timeout: 1.second)
 
@@ -98,21 +98,17 @@ class SchedulerTest < ActiveSupport::TestCase
 
     skip_active_record_query_cache do
       process = SolidQueue::Process.first
-      # initially there are no recurring_schedule keys
       assert_empty process.metadata
 
-      # now create a dynamic task after the scheduler has booted
       SolidQueue::RecurringTask.create!(
-        key:        "new_dynamic_task",
-        static:     false,
+        key: "new_dynamic_task",
+        static: false,
         class_name: "AddToBufferJob",
-        schedule:   "every second",
-        arguments:  [ 42 ]
+        schedule: "every second",
+        arguments: [ 42 ]
       )
 
       wait_while_with_timeout(3.seconds) { process.reload.metadata.empty? }
-
-      # metadata should now include the new key
       assert_metadata process, recurring_schedule: [ "new_dynamic_task" ]
     end
   ensure
@@ -121,11 +117,11 @@ class SchedulerTest < ActiveSupport::TestCase
 
   test "updates metadata after removing dynamic task post-start" do
     old_dynamic_task = SolidQueue::RecurringTask.create!(
-      key:        "old_dynamic_task",
-      static:     false,
+      key: "old_dynamic_task",
+      static: false,
       class_name: "AddToBufferJob",
-      schedule:   "every second",
-      arguments:  [ 42 ]
+      schedule: "every second",
+      arguments: [ 42 ]
     )
 
     scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, polling_interval: 0.1).tap(&:start)
@@ -134,14 +130,11 @@ class SchedulerTest < ActiveSupport::TestCase
 
     skip_active_record_query_cache do
       process = SolidQueue::Process.first
-      # initially there is one recurring_schedule key
       assert_metadata process, recurring_schedule: [ "old_dynamic_task" ]
 
       old_dynamic_task.destroy
 
       wait_while_with_timeout(3.seconds) { process.reload.metadata.present? }
-
-      # The task is unscheduled after it's been removed, and it's reflected in the metadata
       assert_empty process.metadata
     end
   ensure
