@@ -60,8 +60,8 @@ module SolidQueue::Processes
         wake_up
       end
 
-      def refresh_registered_process
-        wrap_in_app_executor { process&.update_columns(metadata: metadata.compact) }
+      def reload_metadata
+        wrap_in_app_executor { process&.update(metadata: metadata.compact) }
       end
   end
 end

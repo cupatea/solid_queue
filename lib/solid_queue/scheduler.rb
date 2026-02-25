@@ -34,7 +34,7 @@ module SolidQueue
         loop do
           break if shutting_down?
 
-          reload_schedule if dynamic_tasks_enabled?
+          reload_dynamic_schedule if dynamic_tasks_enabled?
 
           interruptible_sleep(sleep_interval)
         end
@@ -52,13 +52,9 @@ module SolidQueue
         recurring_schedule.unschedule_tasks
       end
 
-      def reload_schedule
-        recurring_schedule.reload!
-
-        if recurring_schedule.changed?
-          refresh_registered_process
-          recurring_schedule.clear_changes
-        end
+      def reload_dynamic_schedule
+        recurring_schedule.reload_dynamic_tasks
+        reload_metadata
       end
 
       def dynamic_tasks_enabled?
