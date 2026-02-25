@@ -37,7 +37,7 @@ module SolidQueue
       end
 
       def create_dynamic_task(key, **options)
-        from_configuration(key, **options.reverse_merge(static: false)).save!
+        from_configuration(key, **options.merge(static: false)).save!
       end
 
       def delete_dynamic_task(key)

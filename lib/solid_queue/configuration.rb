@@ -171,7 +171,7 @@ module SolidQueue
 
       def recurring_tasks
         @recurring_tasks ||= recurring_tasks_config.map do |id, options|
-          RecurringTask.from_configuration(id, **options.reverse_merge(static: true)) if options&.has_key?(:schedule)
+          RecurringTask.from_configuration(id, **options.merge(static: true)) if options&.has_key?(:schedule)
         end.compact
       end
 
