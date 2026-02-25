@@ -44,11 +44,11 @@ module SolidQueue
   delegate :on_start, :on_stop, :on_exit, to: Supervisor
 
   def schedule_recurring_task(key, **options)
-    RecurringTask.from_configuration(key, **options, static: false).tap(&:save!)
+    RecurringTask.create_dynamic_task(key, **options)
   end
 
   def unschedule_recurring_task(key)
-    RecurringTask.dynamic.find_by!(key:).destroy
+    RecurringTask.delete_dynamic_task(key)
   end
 
   [ Dispatcher, Scheduler, Worker ].each do |process|

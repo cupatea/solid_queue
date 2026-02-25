@@ -36,6 +36,14 @@ module SolidQueue
           static: options.fetch(:static, true)
       end
 
+      def create_dynamic_task(key, **options)
+        from_configuration(key, **options.reverse_merge(static: false)).save!
+      end
+
+      def delete_dynamic_task(key)
+        RecurringTask.dynamic.find_by!(key: key).destroy
+      end
+
       def create_or_update_all(tasks)
         if supports_insert_conflict_target?
           # PostgreSQL fails and aborts the current transaction when it hits a duplicate key conflict
