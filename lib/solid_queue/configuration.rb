@@ -30,7 +30,7 @@ module SolidQueue
 
     SCHEDULER_DEFAULTS = {
       polling_interval: 5,
-      dynamic_tasks: false
+      dynamic_tasks_enabled: false
     }
 
     DEFAULT_CONFIG_FILE_PATH = "config/queue.yml"
@@ -166,12 +166,12 @@ module SolidQueue
       end
 
       def dynamic_tasks_enabled?
-        scheduler_options.fetch(:dynamic_tasks, SCHEDULER_DEFAULTS[:dynamic_tasks])
+        scheduler_options.fetch(:dynamic_tasks_enabled, SCHEDULER_DEFAULTS[:dynamic_tasks_enabled])
       end
 
       def recurring_tasks
         @recurring_tasks ||= recurring_tasks_config.map do |id, options|
-          RecurringTask.from_configuration(id, **options) if options&.has_key?(:schedule)
+          RecurringTask.from_configuration(id, **options.reverse_merge(static: true)) if options&.has_key?(:schedule)
         end.compact
       end
 

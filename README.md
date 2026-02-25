@@ -781,7 +781,7 @@ SolidQueue.unschedule_recurring_task("my_dynamic_task")
 
 Only dynamic tasks can be unscheduled at runtime. Attempting to unschedule a static task (defined in `config/recurring.yml`) will raise an `ActiveRecord::RecordNotFound` error.
 
-Tasks scheduled like this persist between Solid Queue's restarts and won't stop running until you manually unschedule them.
+Tasks scheduled like this persist between Solid Queue's restarts and won't stop running until you manually unschedule them. 
 
 ## Inspiration
 

@@ -21,7 +21,7 @@ class SchedulerTest < ActiveSupport::TestCase
     SolidQueue::RecurringTask.create(
       key: "dynamic_task", static: false, class_name: "AddToBufferJob", schedule: "every second", arguments: [ 42 ]
     )
-    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks: true).tap(&:start)
+    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks_enabled: true).tap(&:start)
 
     wait_for_registered_processes(1, timeout: 1.second)
 
@@ -40,7 +40,7 @@ class SchedulerTest < ActiveSupport::TestCase
 
     recurring_tasks = { static_task: { class: "AddToBufferJob", schedule: "every hour", args: 42 } }
 
-    scheduler = SolidQueue::Scheduler.new(recurring_tasks: recurring_tasks, dynamic_tasks: true).tap(&:start)
+    scheduler = SolidQueue::Scheduler.new(recurring_tasks: recurring_tasks, dynamic_tasks_enabled: true).tap(&:start)
 
     wait_for_registered_processes(1, timeout: 1.second)
 
@@ -78,7 +78,7 @@ class SchedulerTest < ActiveSupport::TestCase
       key: "dynamic_enqueue_task", static: false, class_name: "AddToBufferJob", schedule: "every second", arguments: [ 42 ]
     )
 
-    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks: true, polling_interval: 0.1).tap(&:start)
+    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks_enabled: true, polling_interval: 0.1).tap(&:start)
 
     wait_for_registered_processes(1, timeout: 1.second)
     wait_while_with_timeout(3.seconds) { SolidQueue::Job.count < 1 }
@@ -92,7 +92,7 @@ class SchedulerTest < ActiveSupport::TestCase
   end
 
   test "updates metadata after adding dynamic task post-start" do
-    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks: true, polling_interval: 0.1).tap(&:start)
+    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks_enabled: true, polling_interval: 0.1).tap(&:start)
 
     wait_for_registered_processes(1, timeout: 1.second)
 
@@ -124,7 +124,7 @@ class SchedulerTest < ActiveSupport::TestCase
       arguments: [ 42 ]
     )
 
-    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks: true, polling_interval: 0.1).tap(&:start)
+    scheduler = SolidQueue::Scheduler.new(recurring_tasks: {}, dynamic_tasks_enabled: true, polling_interval: 0.1).tap(&:start)
 
     wait_for_registered_processes(1, timeout: 1.second)
 

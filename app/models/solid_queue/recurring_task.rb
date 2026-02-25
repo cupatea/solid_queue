@@ -20,7 +20,7 @@ module SolidQueue
 
     class << self
       def wrap(args)
-        args.is_a?(self) ? args : from_configuration(args.first, **args.second)
+        args.is_a?(self) ? args : from_configuration(args.first, **args.second.reverse_merge(static: true))
       end
 
       def from_configuration(key, **options)
@@ -33,7 +33,7 @@ module SolidQueue
           queue_name: options[:queue].presence,
           priority: options[:priority].presence,
           description: options[:description],
-          static: true
+          static: !!options[:static]
       end
 
       def create_or_update_all(tasks)

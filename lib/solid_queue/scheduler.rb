@@ -15,9 +15,9 @@ module SolidQueue
 
     def initialize(recurring_tasks:, **options)
       options = options.dup.with_defaults(SolidQueue::Configuration::SCHEDULER_DEFAULTS)
-      @dynamic_tasks = options[:dynamic_tasks]
+      @dynamic_tasks = options[:dynamic_tasks_enabled]
       @polling_interval = options[:polling_interval]
-      @recurring_schedule = RecurringSchedule.new(recurring_tasks, dynamic_tasks: @dynamic_tasks)
+      @recurring_schedule = RecurringSchedule.new(recurring_tasks, dynamic_tasks_enabled: @dynamic_tasks)
 
       super(**options)
     end

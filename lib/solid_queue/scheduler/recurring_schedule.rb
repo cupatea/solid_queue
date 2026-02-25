@@ -6,11 +6,11 @@ module SolidQueue
 
     attr_reader :scheduled_tasks
 
-    def initialize(tasks, dynamic_tasks: false)
-      @static_tasks = Array(tasks).map { |task| SolidQueue::RecurringTask.wrap(task) }.select(&:valid?)
+    def initialize(static_tasks, dynamic_tasks_enabled: false)
+      @static_tasks = Array(static_tasks).map { |task| SolidQueue::RecurringTask.wrap(task) }.select(&:valid?)
       @scheduled_tasks = Concurrent::Hash.new
       @changes = Concurrent::Hash.new
-      @dynamic_tasks_enabled = dynamic_tasks
+      @dynamic_tasks_enabled = dynamic_tasks_enabled
     end
 
     def configured_tasks
