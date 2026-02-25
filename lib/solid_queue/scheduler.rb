@@ -15,9 +15,9 @@ module SolidQueue
 
     def initialize(recurring_tasks:, **options)
       options = options.dup.with_defaults(SolidQueue::Configuration::SCHEDULER_DEFAULTS)
-      @dynamic_tasks = options[:dynamic_tasks_enabled]
+      @dynamic_tasks_enabled = options[:dynamic_tasks_enabled]
       @polling_interval = options[:polling_interval]
-      @recurring_schedule = RecurringSchedule.new(recurring_tasks, dynamic_tasks_enabled: @dynamic_tasks)
+      @recurring_schedule = RecurringSchedule.new(recurring_tasks, dynamic_tasks_enabled: @dynamic_tasks_enabled)
 
       super(**options)
     end
@@ -27,35 +27,20 @@ module SolidQueue
     end
 
     private
-      attr_reader :dynamic_tasks
+
+      STATIC_SLEEP_INTERVAL = 60
 
       def run
-        if dynamic_tasks
-          poll_for_dynamic_tasks
-        else
-          loop do
-            break if shutting_down?
-            interruptible_sleep(polling_interval)
-          end
+        loop do
+          break if shutting_down?
+
+          reload_schedule if dynamic_tasks_enabled?
+
+          interruptible_sleep(sleep_interval)
         end
       ensure
         SolidQueue.instrument(:shutdown_process, process: self) do
           run_callbacks(:shutdown) { shutdown }
-        end
-      end
-
-      def poll_for_dynamic_tasks
-        loop do
-          break if shutting_down?
-
-          recurring_schedule.reload!
-
-          if recurring_schedule.changed?
-            refresh_registered_process
-            recurring_schedule.clear_changes
-          end
-
-          interruptible_sleep(polling_interval)
         end
       end
 
@@ -67,8 +52,25 @@ module SolidQueue
         recurring_schedule.unschedule_tasks
       end
 
+      def reload_schedule
+        recurring_schedule.reload!
+
+        if recurring_schedule.changed?
+          refresh_registered_process
+          recurring_schedule.clear_changes
+        end
+      end
+
+      def dynamic_tasks_enabled?
+        @dynamic_tasks_enabled
+      end
+
       def all_work_completed?
         recurring_schedule.empty?
+      end
+
+      def sleep_interval
+        dynamic_tasks_enabled? ? polling_interval : STATIC_SLEEP_INTERVAL
       end
 
       def set_procline

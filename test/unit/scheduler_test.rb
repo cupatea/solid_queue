@@ -52,6 +52,22 @@ class SchedulerTest < ActiveSupport::TestCase
     scheduler.stop
   end
 
+  test "dynamic tasks in DB are ignored when dynamic_tasks_enabled is false" do
+    SolidQueue::RecurringTask.create!(
+      key: "ignored_task", static: false, class_name: "AddToBufferJob", schedule: "every second", arguments: [ 42 ]
+    )
+
+    recurring_tasks = { static_task: { class: "AddToBufferJob", schedule: "every hour", args: 42 } }
+    scheduler = SolidQueue::Scheduler.new(recurring_tasks: recurring_tasks).tap(&:start)
+
+    wait_for_registered_processes(1, timeout: 1.second)
+
+    process = SolidQueue::Process.first
+    assert_metadata process, recurring_schedule: [ "static_task" ]
+  ensure
+    scheduler.stop
+  end
+
   test "run more than one instance of the scheduler with recurring tasks" do
     recurring_tasks = { example_task: { class: "AddToBufferJob", schedule: "every second", args: 42 } }
     schedulers = 2.times.collect do
