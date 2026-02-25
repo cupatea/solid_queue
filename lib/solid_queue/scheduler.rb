@@ -14,9 +14,10 @@ module SolidQueue
     after_shutdown :run_exit_hooks
 
     def initialize(recurring_tasks:, **options)
-      @recurring_schedule = RecurringSchedule.new(recurring_tasks)
       options = options.dup.with_defaults(SolidQueue::Configuration::SCHEDULER_DEFAULTS)
+      @dynamic_tasks = options[:dynamic_tasks]
       @polling_interval = options[:polling_interval]
+      @recurring_schedule = RecurringSchedule.new(recurring_tasks, dynamic_tasks: @dynamic_tasks)
 
       super(**options)
     end
@@ -26,7 +27,24 @@ module SolidQueue
     end
 
     private
+      attr_reader :dynamic_tasks
+
       def run
+        if dynamic_tasks
+          poll_for_dynamic_tasks
+        else
+          loop do
+            break if shutting_down?
+            interruptible_sleep(polling_interval)
+          end
+        end
+      ensure
+        SolidQueue.instrument(:shutdown_process, process: self) do
+          run_callbacks(:shutdown) { shutdown }
+        end
+      end
+
+      def poll_for_dynamic_tasks
         loop do
           break if shutting_down?
 
@@ -38,10 +56,6 @@ module SolidQueue
           end
 
           interruptible_sleep(polling_interval)
-        end
-      ensure
-        SolidQueue.instrument(:shutdown_process, process: self) do
-          run_callbacks(:shutdown) { shutdown }
         end
       end
 

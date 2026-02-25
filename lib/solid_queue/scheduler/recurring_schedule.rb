@@ -6,18 +6,27 @@ module SolidQueue
 
     attr_reader :scheduled_tasks
 
-    def initialize(tasks)
+    def initialize(tasks, dynamic_tasks: false)
       @static_tasks = Array(tasks).map { |task| SolidQueue::RecurringTask.wrap(task) }.select(&:valid?)
       @scheduled_tasks = Concurrent::Hash.new
       @changes = Concurrent::Hash.new
+      @dynamic_tasks_enabled = dynamic_tasks
     end
 
     def configured_tasks
-      static_tasks + dynamic_tasks.to_a
+      if dynamic_tasks_enabled?
+        static_tasks + dynamic_tasks.to_a
+      else
+        static_tasks
+      end
     end
 
     def empty?
-      scheduled_tasks.empty? && dynamic_tasks.none?
+      if dynamic_tasks_enabled?
+        scheduled_tasks.empty? && dynamic_tasks.none?
+      else
+        scheduled_tasks.empty?
+      end
     end
 
     def schedule_tasks
@@ -41,7 +50,11 @@ module SolidQueue
     end
 
     def task_keys
-      static_task_keys + dynamic_tasks.pluck(:key)
+      if dynamic_tasks_enabled?
+        static_task_keys + dynamic_tasks.pluck(:key)
+      else
+        static_task_keys
+      end
     end
 
     def reload!
@@ -67,6 +80,10 @@ module SolidQueue
 
     private
       attr_reader :static_tasks
+
+      def dynamic_tasks_enabled?
+        @dynamic_tasks_enabled
+      end
 
       def dynamic_tasks
         SolidQueue::RecurringTask.dynamic

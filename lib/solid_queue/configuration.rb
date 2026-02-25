@@ -29,7 +29,8 @@ module SolidQueue
     }
 
     SCHEDULER_DEFAULTS = {
-      polling_interval: 1
+      polling_interval: 5,
+      dynamic_tasks: false
     }
 
     DEFAULT_CONFIG_FILE_PATH = "config/queue.yml"
@@ -143,10 +144,11 @@ module SolidQueue
       def schedulers
         return [] if skip_recurring_tasks?
 
-        # Always start a scheduler (even with no static recurring tasks) to support
-        # dynamic tasks that may be added at runtime via SolidQueue.schedule_task.
-        # Use skip_recurring: true or SOLID_QUEUE_SKIP_RECURRING=true to disable.
-        [ Process.new(:scheduler, { recurring_tasks:, **scheduler_options.with_defaults(SCHEDULER_DEFAULTS) }) ]
+        if recurring_tasks.any? || dynamic_tasks_enabled?
+          [ Process.new(:scheduler, { recurring_tasks:, **scheduler_options.with_defaults(SCHEDULER_DEFAULTS) }) ]
+        else
+          []
+        end
       end
 
       def workers_options
@@ -161,6 +163,10 @@ module SolidQueue
 
       def scheduler_options
         @scheduler_options ||= processes_config.fetch(:scheduler, {}).dup.symbolize_keys
+      end
+
+      def dynamic_tasks_enabled?
+        scheduler_options.fetch(:dynamic_tasks, SCHEDULER_DEFAULTS[:dynamic_tasks])
       end
 
       def recurring_tasks

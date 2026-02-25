@@ -17,6 +17,7 @@ Solid Queue can be used with SQL databases such as MySQL, PostgreSQL, or SQLite,
 - [Workers, dispatchers, and scheduler](#workers-dispatchers-and-scheduler)
   - [Fork vs. async mode](#fork-vs-async-mode)
 - [Configuration](#configuration)
+  - [Optional scheduler configuration](#optional-scheduler-configuration)
   - [Queue order and priorities](#queue-order-and-priorities)
   - [Queues specification and performance](#queues-specification-and-performance)
   - [Threads, processes, and signals](#threads-processes-and-signals)
@@ -31,6 +32,7 @@ Solid Queue can be used with SQL databases such as MySQL, PostgreSQL, or SQLite,
 - [Puma plugin](#puma-plugin)
 - [Jobs and transactional integrity](#jobs-and-transactional-integrity)
 - [Recurring tasks](#recurring-tasks)
+  - [Scheduling and unscheduling recurring tasks dynamically](#scheduling-and-unscheduling-recurring-tasks-dynamically)
 - [Inspiration](#inspiration)
 - [License](#license)
 
@@ -209,7 +211,7 @@ By default, Solid Queue will try to find your configuration under `config/queue.
 bin/jobs -c config/calendar.yml
 ```
 
-You can also skip all recurring tasks by setting the environment variable `SOLID_QUEUE_SKIP_RECURRING=true`. This is useful for environments like staging, review apps, or development where you don't want any recurring jobs to run. This is equivalent to using the `--skip-recurring` option with `bin/jobs`.
+You can also skip the scheduler process by setting the environment variable `SOLID_QUEUE_SKIP_RECURRING=true`. This is useful for environments like staging, review apps, or development where you don't want any recurring jobs to run. This is equivalent to using the `--skip-recurring` option with `bin/jobs`.
 
 This is what this configuration looks like:
 
@@ -227,6 +229,10 @@ production:
       threads: 5
       polling_interval: 0.1
       processes: 3
+  scheduler:
+    dynamic_tasks_enabled: true
+    polling_interval: 5
+
 ```
 
 Everything is optional. If no configuration at all is provided, Solid Queue will run with one dispatcher and one worker with default settings. If you want to run only dispatchers or workers, you just need to include that section alone in the configuration. For example, with the following configuration:
@@ -270,18 +276,19 @@ It is recommended to set this value less than or equal to the queue database's c
 - `processes`: this is the number of worker processes that will be forked by the supervisor with the settings given. By default, this is `1`, just a single process. This setting is useful if you want to dedicate more than one CPU core to a queue or queues with the same configuration. Only workers have this setting. **Note**: this option will be ignored if [running in `async` mode](#fork-vs-async-mode).
 - `concurrency_maintenance`: whether the dispatcher will perform the concurrency maintenance work. This is `true` by default, and it's useful if you don't use any [concurrency controls](#concurrency-controls) and want to disable it or if you run multiple dispatchers and want some of them to just dispatch jobs without doing anything else.
 
-### Scheduler polling interval
 
-The scheduler process checks for due recurring tasks and reloads dynamic tasks at a configurable interval. You can set this interval using the `polling_interval` key under the `scheduler` section in your `config/queue.yml`:
+### Optional scheduler configuration
+
+Optionally, you can configure the scheduler process under the `scheduler` section in your `config/queue.yml` if you'd like to [schedule recurring tasks dynamically](#scheduling-and-unscheduling-recurring-tasks-dynamically).
 
 ```yaml
 scheduler:
-  polling_interval: 5 # seconds
+  dynamic_tasks_enabled: true
+  polling_interval: 5
 ```
 
-This controls how frequently the scheduler wakes up to enqueue due recurring jobs and reload dynamic tasks.
-
-> **Note:** The scheduler process always starts by default to support dynamic recurring tasks, even if no static tasks are configured in `config/recurring.yml`. If you don't use recurring tasks at all, you can disable the scheduler by setting `SOLID_QUEUE_SKIP_RECURRING=true` or passing `skip_recurring: true` in the configuration.
+- `dynamic_tasks_enabled`: whether the scheduler should poll for [dynamically scheduled recurring tasks](#scheduling-and-unscheduling-recurring-tasks-dynamically). This is `false` by default. When enabled, the scheduler will poll the database at the given `polling_interval` to pick up tasks scheduled via `SolidQueue.schedule_recurring_task`.
+- `polling_interval`: how frequently (in seconds) the scheduler checks for dynamic task changes. Defaults to `5`.
 
 ### Queue order and priorities
 
@@ -744,14 +751,19 @@ my_periodic_resque_job:
 
 and the job will be enqueued via `perform_later` so it'll run in Resque. However, in this case we won't track any `solid_queue_recurring_execution` record for it and there won't be any guarantees that the job is enqueued only once each time.
 
-### Scheduling and Unscheduling Recurring Tasks Dynamically
+### Scheduling and unscheduling recurring tasks dynamically
 
-You can schedule and unschedule recurring tasks at runtime, without editing the configuration file. Use the following methods:
+You can schedule and unschedule recurring tasks at runtime, without editing the configuration file. To enable this, you need to set `dynamic_tasks_enabled: true` in the `scheduler` section of your `config/queue.yml`, [as explained earlier](#optional-scheduler-configuration).
 
-#### Scheduling a recurring task
+```yaml
+scheduler:
+  dynamic_tasks_enabled: true
+```
+
+Then you can use the following methods to add recurring tasks dynamically:
 
 ```ruby
-SolidQueue.schedule_task(
+SolidQueue.schedule_recurring_task(
   "my_dynamic_task",
   class: "MyJob",
   args: [1, 2],
@@ -759,31 +771,17 @@ SolidQueue.schedule_task(
 )
 ```
 
-This will create a dynamic recurring task with the given key, class, and schedule. The API accepts the same options as the YAML configuration: `class`, `args`, `command`, `schedule`, `queue`, `priority`, and `description`.
+This accepts the same options as the YAML configuration: `class`, `args`, `command`, `schedule`, `queue`, `priority`, and `description`.
 
-#### Unscheduling a recurring task
-
-```ruby
-SolidQueue.unschedule_task(key)
-```
-
-This will delete a dynamically scheduled recurring task by its key. If you attempt to unschedule a static (configuration-defined) recurring task, an error will be raised.
-
-> **Note:** Static recurring tasks (those defined in `config/recurring.yml`) cannot be unscheduled at runtime. Attempting to do so will raise an error.
-
-#### Example: Scheduling and unscheduling a recurring task
+To remove a dynamically scheduled task:
 
 ```ruby
-# Schedule a new dynamic recurring task
-SolidQueue.schedule_task(
-  "cleanup_temp_files",
-  class: "TempFileCleanerJob",
-  schedule: "every day at 2am"
-)
-
-# Unschedule the task later by key
-SolidQueue.unschedule_task("cleanup_temp_files")
+SolidQueue.unschedule_recurring_task("my_dynamic_task")
 ```
+
+Only dynamic tasks can be unscheduled at runtime. Attempting to unschedule a static task (defined in `config/recurring.yml`) will raise an `ActiveRecord::RecordNotFound` error.
+
+Tasks scheduled like this persist between Solid Queue's restarts and won't stop running until you manually unschedule them.
 
 ## Inspiration
 
