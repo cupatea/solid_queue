@@ -25,6 +25,7 @@ module SolidQueue
       wrap_in_app_executor do
         persist_static_tasks
         reload_static_tasks
+        reload_dynamic_tasks
       end
 
       configured_tasks.each do |task|
@@ -42,11 +43,12 @@ module SolidQueue
     end
 
     def task_keys
-      static_task_keys + dynamic_task_keys
+      configured_tasks.map(&:key)
     end
 
-    def reload_dynamic_tasks
+    def reschedule_dynamic_tasks
       wrap_in_app_executor do
+        reload_dynamic_tasks
         schedule_created_dynamic_tasks
         unschedule_deleted_dynamic_tasks
       end
@@ -60,11 +62,7 @@ module SolidQueue
       end
 
       def dynamic_tasks
-        dynamic_tasks_enabled? ? RecurringTask.dynamic : RecurringTask.none
-      end
-
-      def dynamic_task_keys
-        dynamic_tasks.pluck(:key)
+        @dynamic_tasks ||= load_dynamic_tasks
       end
 
       def dynamic_tasks_enabled?
@@ -72,7 +70,7 @@ module SolidQueue
       end
 
       def schedule_created_dynamic_tasks
-        dynamic_tasks.where.not(key: scheduled_tasks.keys).each do |task|
+        RecurringTask.dynamic.where.not(key: scheduled_tasks.keys).each do |task|
           schedule_task(task)
         end
       end
@@ -91,6 +89,14 @@ module SolidQueue
 
       def reload_static_tasks
         @static_tasks = RecurringTask.static.where(key: static_task_keys).to_a
+      end
+
+      def reload_dynamic_tasks
+        @dynamic_tasks = load_dynamic_tasks
+      end
+
+      def load_dynamic_tasks
+        dynamic_tasks_enabled? ? RecurringTask.dynamic.to_a : []
       end
 
       def schedule(task)

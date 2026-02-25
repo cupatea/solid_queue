@@ -53,7 +53,7 @@ module SolidQueue
       end
 
       def reload_dynamic_schedule
-        recurring_schedule.reload_dynamic_tasks
+        recurring_schedule.reschedule_dynamic_tasks
         reload_metadata
       end
 
